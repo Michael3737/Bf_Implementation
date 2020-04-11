@@ -1,16 +1,19 @@
--- Lets give this a try
 import Data.Char
 
 blankTape :: [Int]
-blankTape = take 1024 [0,0..]
+blankTape = [0,0..]
 
 run :: String -> String
-run xs = snd (evaluate (filter isInstruction xs) (blankTape,""))
+run xs = snd (evaluate (filter isInstruction xs) (tapeNeeded (length xs),"")) -- returning the second of the tuple, to be solved with IO
 
 isInstruction :: Char -> Bool
 isInstruction c
-  | c == '>' || c == '<' || c == '+' || c == '-' || c == '.' || c == '[' || c == ']'= True
+  | c == '>' || c == '<' || c == '+' || c == '-' || 
+    c == '.' || c == '[' || c == ']' || c == ','= True -- no implementation for , yet
   | otherwise = False
+
+tapeNeeded :: Int -> [Int]
+tapeNeeded x = take x blankTape
 
 evaluate :: String -> ([Int],String) -> ([Int],String)
 evaluate _ ([],r)                    = error"no tape assigned"
