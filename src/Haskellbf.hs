@@ -7,24 +7,26 @@ main = do
   let pureInstructions = filter isInstruction instructions
       memory = tapeNeeded (length instructions)
 
-  executionLoop (pureInstructions,memory)
+  executionLoop pureInstructions memory
 
-executionLoop :: (String,[Int]) -> IO()
-executionLoop (str,xs) = do
-  let output = evaluate (str,xs)
-
-  if fst output == "" || fst output == "," then
-    return ()
-    else if (head (fst output)) == '.' then do
-      putChar (chr . head . snd $ output)
-      executionLoop (tail . fst $ output, snd output)
-    else if (head . fst $ output) == ',' then do
+executionLoop :: String -> [Int] -> IO()
+executionLoop [] xs = return ()
+executionLoop "," xs = return ()
+executionLoop (ch:str) xs = do
+    if ch == '.' then do
+      putChar (chr . head  $ xs)
+      executionLoop str xs
+    else if ch == ',' then do
       putStrLn "Please enter an integer number to insert into the current cell"
       input <- numPrompt
-      executionLoop (tail . fst $ output,(input : (tail . snd $ output)))
-    else do
-      putStrLn "ahhh"
-      return ()
+      executionLoop str (input : tail xs)
+    else if ch == '[' && head xs > 0 then do
+      executionLoop (loopContents str) xs
+      executionLoop (ch:str) (evaluateInnerLoop (loopContents str) xs)
+    else if ch == '[' then
+      executionLoop (beyondLoop str) xs
+    else
+      executionLoop str (evaluate ch xs)
 
 numPrompt :: Read a => IO a
 numPrompt = do
@@ -36,26 +38,35 @@ blankTape = [0,0..]
 
 isInstruction :: Char -> Bool
 isInstruction c
-  | c == '>' || c == '<' || c == '+' || c == '-' || 
+  | c == '>' || c == '<' || c == '+' || c == '-' ||
     c == '.' || c == '[' || c == ']' || c == ','= True
   | otherwise = False
 
 tapeNeeded :: Int -> [Int]
 tapeNeeded x = take x blankTape
 
-evaluate :: (String,[Int]) -> (String,[Int])
-evaluate (_,[])                    = error"no tape assigned"
-evaluate ([],xs)                   = ([],xs)
-evaluate ((ch:str),(xs)) | ch == '>' = evaluate (str,(moveRight xs))
-                         | ch == '<' = evaluate (str,(moveLeft xs))
-                         | ch == '+' = evaluate (str,(increment xs))
-                         | ch == '-' = evaluate (str,(decrement xs))
-                         | ch == '.' = (ch:str,xs)
-                         | ch == ',' = (ch:str,xs)
-                         | ch == '[' && head xs > 0 = evaluate ((ch:str),snd (evaluate ((loopContents str),xs)))
-                         | ch == '[' = evaluate (beyondLoop str,xs)
-                         | ch == ']' = evaluate (str,xs)
-                         | otherwise = error "not a valid instruction"
+evaluate :: Char -> [Int] -> [Int]
+evaluate _ []              = error"no tape assigned"
+evaluate ch xs | ch == '>' = moveRight xs
+               | ch == '<' = moveLeft xs
+               | ch == '+' = increment xs
+               | ch == '-' = decrement xs
+               | ch == '.' = error ". should be handled in Loop"
+               | ch == ',' = error ", should be handled in Loop"
+               | ch == '[' = xs
+               | ch == ']' = xs
+               | ch == ']' = xs
+               | otherwise = error "not a valid instruction"
+
+evaluateInnerLoop :: String -> [Int] -> [Int]
+evaluateInnerLoop _ []  = error "no tape assigned"
+evaluateInnerLoop [] xs = xs
+evaluateInnerLoop (ch:str) xs | ch == '.' = evaluateInnerLoop str xs
+                              | ch == ',' = evaluateInnerLoop str xs
+                              | ch == '[' && head xs > 0 = evaluateInnerLoop (ch:str) (evaluateInnerLoop (loopContents str) xs)
+                              | ch == '[' = evaluateInnerLoop (beyondLoop str) xs
+                              | otherwise = evaluateInnerLoop str (evaluate ch xs)
+
 
 moveRight :: [Int] -> [Int]
 moveRight xs = tail xs ++ [head xs]
@@ -64,12 +75,12 @@ moveLeft :: [Int] -> [Int]
 moveLeft xs = last xs : init xs
 
 increment :: [Int] -> [Int]
-increment (x:xs) | x+1 <= 128 = x+1 : xs
-                 | otherwise = 0 : xs
+increment (x:xs) | x == 255 = 0 : xs
+                 | otherwise = x+1 : xs
 
 decrement :: [Int] -> [Int]
-decrement (x:xs) | x-1 >= 0 = x-1 : xs
-                 | otherwise = 128 : xs
+decrement (x:xs) | x == 0 = 255 : xs
+                 | otherwise = x-1 : xs
 
 beyondLoop :: String -> String
 beyondLoop [] = []
