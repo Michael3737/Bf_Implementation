@@ -21,8 +21,7 @@ executionLoop (ch:str) xs = do
       input <- numPrompt
       executionLoop str (input : tail xs)
     else if ch == '[' && head xs > 0 then do
-      executionLoop (loopContents str) xs
-      executionLoop (ch:str) (evaluateInnerLoop (loopContents str) xs)
+      executionLoop ((loopContents str) ++ (ch:str)) xs
     else if ch == '[' then
       executionLoop (beyondLoop str) xs
     else
@@ -57,16 +56,6 @@ evaluate ch xs | ch == '>' = moveRight xs
                | ch == ']' = xs
                | ch == ']' = xs
                | otherwise = error "not a valid instruction"
-
-evaluateInnerLoop :: String -> [Int] -> [Int]
-evaluateInnerLoop _ []  = error "no tape assigned"
-evaluateInnerLoop [] xs = xs
-evaluateInnerLoop (ch:str) xs | ch == '.' = evaluateInnerLoop str xs
-                              | ch == ',' = evaluateInnerLoop str xs
-                              | ch == '[' && head xs > 0 = evaluateInnerLoop (ch:str) (evaluateInnerLoop (loopContents str) xs)
-                              | ch == '[' = evaluateInnerLoop (beyondLoop str) xs
-                              | otherwise = evaluateInnerLoop str (evaluate ch xs)
-
 
 moveRight :: [Int] -> [Int]
 moveRight xs = tail xs ++ [head xs]
